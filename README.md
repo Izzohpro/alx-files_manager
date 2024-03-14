@@ -1,172 +1,79 @@
-Curriculum <br>
-**Short Specialization** <br>
+# 0x15. Files manager
 
-# 0x04. Files manager
-
-`Back-end` `JavaScript` `ES6` `NoSQL` `MongoDB` `Redis` `NodeJS` `ExpressJS` `Kue`
-
-```
-This project is a summary of this back-end trimester: authentication, NodeJS, MongoDB, Redis, pagination, and background processing.
-
+## Learning Objectives
 The objective is to build a simple platform to upload and view files:
+   - User authentication via a token
+   - List all files
+   - Upload a new file
+   - Change permission of a file
+   - View a file
+   - Generate thumbnails for images
 
-* User authentication via a token
-* List all files
-* Upload a new file
-* Change permission of a file
-* View a file
-* Generate thumbnails for images
+Also, to fully understand these concepts:
+   - how to create an API with Express
+   - how to authenticate a user
+   - how to store data in MongoDB
+   - how to store temporary data in Redis
+   - how to setup and use a background worker
+
+## Results
+Start server:
+```
+bob@dylan:~$ npm run start-server
+Server running on port 5000
+...
+```
+Create user:
+```
+bob@dylan:~$ curl 0.0.0.0:5000/users -XPOST -H "Content-Type: application/json" -d '{ "email": "bob@dylan.com", "password": "toto1234!" }' ; echo ""
+{"id":"5f1e7d35c7ba06511e683b21","email":"bob@dylan.com"}
+```
+Authenticate user:
+```
+ curl 0.0.0.0:5000/connect -H "Authorization: Basic Ym9iQGR5bGFuLmNvbTp0b3RvMTIzNCE=" ; echo ""
+{"token":"031bffac-3edc-4e51-aaae-1c121317da8a"}
+bob@dylan:~$
+bob@dylan:~$ curl 0.0.0.0:5000/users/me -H "X-Token: 031bffac-3edc-4e51-aaae-1c121317da8a" ; echo ""
+{"id":"5f1e7cda04a394508232559d","email":"bob@dylan.com"}
+bob@dylan:~$ 
 ```
 
-## Resources
+Create file:
+```
+bob@dylan:~$ curl -XPOST 0.0.0.0:5000/files -H "X-Token: f21fb953-16f9-46ed-8d9c-84c6450ec80f" -H "Content-Type: application/json" -d '{ "name": "myText.txt", "type": "file", "data": "SGVsbG8gV2Vic3RhY2shCg==" }' ; echo ""
+{"id":"5f1e879ec7ba06511e683b22","userId":"5f1e7cda04a394508232559d","name":"myText.txt","type":"file","isPublic":false,"parentId":0}
+bob@dylan:~$
+bob@dylan:~$ ls /tmp/files_manager/
+2a1f4fc3-687b-491a-a3d2-5808a02942c9
+bob@dylan:~$
+bob@dylan:~$ cat /tmp/files_manager/2a1f4fc3-687b-491a-a3d2-5808a02942c9 
+Hello Webstack!
+```
 
-**Read or watch:**
+Get files:
+```
+ curl -XGET 0.0.0.0:5000/files -H "X-Token: f21fb953-16f9-46ed-8d9c-84c6450ec80f" ; echo ""
+[{"id":"5f1e879ec7ba06511e683b22","userId":"5f1e7cda04a394508232559d","name":"myText.txt","type":"file","isPublic":false,"parentId":0},{"id":"5f1e881cc7ba06511e683b23","userId":"5f1e7cda04a394508232559d","name":"images","type":"folder","isPublic":false,"parentId":0},{"id":"5f1e8896c7ba06511e683b25","userId":"5f1e7cda04a394508232559d","name":"image.png","type":"image","isPublic":true,"parentId":"5f1e881cc7ba06511e683b23"}]
+bob@dylan:~$
+bob@dylan:~$ curl -XGET 0.0.0.0:5000/files?parentId=5f1e881cc7ba06511e683b23 -H "X-Token: f21fb953-16f9-46ed-8d9c-84c6450ec80f" ; echo ""
+[{"id":"5f1e8896c7ba06511e683b25","userId":"5f1e7cda04a394508232559d","name":"image.png","type":"image","isPublic":true,"parentId":"5f1e881cc7ba06511e683b23"}]
+bob@dylan:~$
+bob@dylan:~$ curl -XGET 0.0.0.0:5000/files/5f1e8896c7ba06511e683b25 -H "X-Token: f21fb953-16f9-46ed-8d9c-84c6450ec80f" ; echo ""
+{"id":"5f1e8896c7ba06511e683b25","userId":"5f1e7cda04a394508232559d","name":"image.png","type":"image","isPublic":true,"parentId":"5f1e881cc7ba06511e683b23"}
+bob@dylan:~$
+```
 
-* [Node JS getting started](https://www.nodejs.org/en/docs/guides/getting-started-guide/)
-* [Process API doc](https://www.node.readthedocs.io/en/latest/api/process/)
-* [Express getting started](https://www.expressjs.com/en/starter/installing.html)
-* [Mocha documentation](https://www.mochajs.org)
-* [Nodemon documentation](https://www.github.com/remy/nodemon#nodemon)
-* [MongoDB](https://www.github.com/mongodb/node-mongodb-native)
-* [Bull](https://www.github.com/OptimalBits/bull)
-* [Image thumbnail](https://www.npmjs.com/package/image-thumbnail)
-* [Mime-Types](https://www.npmjs.com/package/mime-types)
-* [Redis](https://www.github.com/redis/node-redis)
+Publish a file:
+```
+curl -XGET 0.0.0.0:5000/files/5f1e8896c7ba06511e683b25 -H "X-Token: f21fb953-16f9-46ed-8d9c-84c6450ec80f" ; echo ""
+{"id":"5f1e8896c7ba06511e683b25","userId":"5f1e7cda04a394508232559d","name":"image.png","type":"image","isPublic":false,"parentId":"5f1e881cc7ba06511e683b23"}
+bob@dylan:~$
+bob@dylan:~$ curl -XPUT 0.0.0.0:5000/files/5f1e8896c7ba06511e683b25/publish -H "X-Token: f21fb953-16f9-46ed-8d9c-84c6450ec80f" ; echo ""
+{"id":"5f1e8896c7ba06511e683b25","userId":"5f1e7cda04a394508232559d","name":"image.png","type":"image","isPublic":true,"parentId":"5f1e881cc7ba06511e683b23"}
+```
 
-## Requirements
-
-* Allowed editors: `vi`, `vim`, `emacs` `Visual Studio Code`
-* Files interpreted/compiled on Ubuntu 18.04 LTS using `node` (version 12.x.x)
-* All files should end with a new line
-* Mandatory `README.md` file
-* Code use the `js` extension
-* Code verified against lint using ESLint
-
-## Provided files
-
-`package.json`
-
-<details>
-  <summary>Click to show/hide file contents</summary>
-
-  ```json
-
-  {
-    "name": "files_manager",
-    "version": "1.0.0",
-    "description": "",
-    "main": "index.js",
-    "scripts": {
-      "lint": "./node_modules/.bin/eslint",
-      "check-lint": "lint [0-9]*.js",
-      "start-server": "nodemon --exec babel-node --presets @babel/preset-env ./server.js",
-      "start-worker": "nodemon --exec babel-node --presets @babel/preset-env ./worker.js",
-      "dev": "nodemon --exec babel-node --presets @babel/preset-env",
-      "test": "./node_modules/.bin/mocha --require @babel/register --exit"
-    },
-    "author": "",
-    "license": "ISC",
-    "dependencies": {
-      "bull": "^3.16.0",
-      "chai-http": "^4.3.0",
-      "express": "^4.17.1",
-      "image-thumbnail": "^1.0.10",
-      "mime-types": "^2.1.27",
-      "mongodb": "^3.5.9",
-      "redis": "^2.8.0",
-      "sha1": "^1.1.1",
-      "uuid": "^8.0.0"
-    },
-    "devDependencies": {
-      "@babel/cli": "^7.8.0",
-      "@babel/core": "^7.8.0",
-      "@babel/node": "^7.8.0",
-      "@babel/preset-env": "^7.8.2",
-      "@babel/register": "^7.8.0",
-      "chai": "^4.2.0",
-      "chai-http": "^4.3.0",
-      "mocha": "^6.2.2",
-      "nodemon": "^2.0.2",
-      "eslint": "^6.4.0",
-      "eslint-config-airbnb-base": "^14.0.0",
-      "eslint-plugin-import": "^2.18.2",
-      "eslint-plugin-jest": "^22.17.0",
-      "request": "^2.88.0",
-      "sinon": "^7.5.0"
-    }
-  }
-  ```
-</details>
-
-`.eslintrc.js`
-
-<details>
-  <summary>Click to show/hide file contents</summary>
-
-  ```javascript
-
-  module.exports = {
-    env: {
-      browser: false,
-      es6: true,
-      jest: true,
-    },
-    extends: [
-      'airbnb-base',
-      'plugin:jest/all',
-    ],,
-    globals: {
-      Atomics: 'readonly',
-      SharedArrayBuffer: 'readonly',
-    },
-    parserOptions: {
-      ecmaVersion: 2018,
-      sourceType: 'module',
-    },
-    plugins: ['jest'],
-    rules: {
-      'max-classes-per-file': 'off',
-      'no-underscore-dangle': 'off',
-      'no-console': 'off',
-      'no-shadow': 'off',
-      'no-restricted-syntax': [
-        'error',
-	'LabeledStatement',
-	'withStatement',
-      ],
-    },
-    overrides:[
-      {
-        files: ['*.js'],
-	excludedFiles: 'babel.config.js',
-      }
-    ]
-  };
-  ```
-</details>
-
-`babel.config.js`
-
-<details>
-  <summary>Click to show/hide file contents</summary>
-
-  ```javascript
-
-  module.exports = {
-    presets: [
-      [
-        '@babel/preset-env',
-	{
-	  targets: {
-	    node: 'current',
-	  },
-	},
-      ],
-    ],
-  };
-  ```
-</details>
-
-### and...
-
-Don't forget to run `$ npm install` when you have the `package.json`
+Get a file's data:
+```
+ curl -XGET 0.0.0.0:5000/files/5f1e879ec7ba06511e683b22/data -H "X-Token: f21fb953-16f9-46ed-8d9c-84c6450ec80f" ; echo ""
+Hello Webstack!
+```
